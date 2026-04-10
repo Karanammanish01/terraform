@@ -28,3 +28,7 @@ Thumbs.db
 # IDE files
 .vscode/
 .idea/
+
+
+# ssh key
+terra-file-*

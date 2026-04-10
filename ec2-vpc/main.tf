@@ -44,7 +44,7 @@ resource "aws_route_table" "public-route" {
 
 resource "aws_route" "public_internet_route" {
   route_table_id = aws_route_table.public-route.id
-  destination_cidr_block = "0.0.0.0/16"
+  destination_cidr_block = "0.0.0.0/0"
   gateway_id = aws_internet_gateway.prod-igw.id
 }
 
@@ -68,7 +68,8 @@ resource "aws_nat_gateway" "nat_gw" {
     Name = "prod-nat-gateway"
   }
 
-  depends_on = [ aws_internet_gateway.prod-igw.id ]
+  # depends on works with whole block not just argument eg .id in this case
+  depends_on = [ aws_internet_gateway.prod-igw ]
 }
 
 # private route
@@ -89,4 +90,58 @@ resource "aws_route" "name" {
 resource "aws_route_table_association" "private_assoc" {
   subnet_id = aws_subnet.prod-private-subnet.id
   route_table_id = aws_route_table.private_internet_route.id
+}
+
+# EC2 instance key 
+resource "aws_key_pair" "prod_key" {
+  key_name = "terra-file-key"
+  public_key = file("terra-file-key.pub")
+}
+
+# EC2 instance security group
+resource "aws_security_group" "public_sg" {
+    name = "public_sg"
+    description = "this is used for public server "
+    vpc_id = aws_vpc.prod.id
+
+    #inbound rules
+    ingress {
+        description = "SSH"
+        from_port = 22
+        to_port = 22
+        protocol    = "tcp"
+        cidr_blocks = ["0.0.0.0/0"]         
+    }
+
+    #outbound
+    egress {
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]        
+    }
+}
+
+# EC2 instance 
+resource "aws_instance" "ec2_vm" {
+    ami = "ami-0ec10929233384c7f"
+    instance_type = "t2.nano"
+
+    key_name = aws_key_pair.prod_key.key_name
+
+    vpc_security_group_ids = [ aws_security_group.public_sg.id ]
+
+    subnet_id = aws_subnet.prod-public-subnet.id
+
+    # Bool is required for this
+    associate_public_ip_address = true
+    
+    root_block_device {
+      volume_size = 15
+      volume_type = "gp3"
+    }
+
+    tags = {
+      Name = "bastion-vm"
+    }
 }
