@@ -145,3 +145,53 @@ resource "aws_instance" "ec2_vm" {
       Name = "bastion-vm"
     }
 }
+
+
+
+#Private vm for services
+
+# security groups
+resource "aws_security_group" "private-sg" {
+  name = "private-sg"
+  description = "Private VM should have this"
+  vpc_id = aws_vpc.prod.id
+
+  # inbound
+  ingress {
+    description = "SSH"
+    from_port = 22
+    to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["10.0.1.0/24"]
+  }
+
+  # outbound
+  egress {
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]      
+  }
+}
+
+# EC2 instance
+
+resource "aws_instance" "private-vm" {
+    ami = "ami-0ec10929233384c7f"
+    instance_type = "t2.nano"
+
+    key_name = aws_key_pair.prod_key.key_name
+
+    vpc_security_group_ids = [ aws_security_group.private-sg.id ]
+
+    subnet_id = aws_subnet.prod-private-subnet.id
+
+    root_block_device {
+      volume_size = 15
+      volume_type = "gp3"
+    }
+
+    tags = {
+      Name = "backend-vm"
+    }
+}
