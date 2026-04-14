@@ -1,5 +1,5 @@
 resource "aws_vpc" "prod" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block = var.default_cidr_block
   instance_tenancy = "default"
 
   tags = {
@@ -124,8 +124,9 @@ resource "aws_security_group" "public_sg" {
 
 # EC2 instance 
 resource "aws_instance" "ec2_vm" {
-    ami = "ami-0ec10929233384c7f"
-    instance_type = "t2.nano"
+    count = 2
+    ami = var.default_ami_image
+    instance_type = var.default_instance_type
 
     key_name = aws_key_pair.prod_key.key_name
 
@@ -181,7 +182,7 @@ resource "aws_instance" "private-vm" {
       "backend_nano" = "t2.nano"
       "backend_micro" = "t2.micro"
     })
-    ami = "ami-0ec10929233384c7f"
+    ami = var.default_ami_image
     instance_type = each.value
 
     key_name = aws_key_pair.prod_key.key_name
