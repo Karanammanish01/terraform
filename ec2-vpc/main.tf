@@ -177,8 +177,12 @@ resource "aws_security_group" "private-sg" {
 # EC2 instance
 
 resource "aws_instance" "private-vm" {
+    for_each = tomap({
+      "backend_nano" = "t2.nano"
+      "backend_micro" = "t2.micro"
+    })
     ami = "ami-0ec10929233384c7f"
-    instance_type = "t2.nano"
+    instance_type = each.value
 
     key_name = aws_key_pair.prod_key.key_name
 
@@ -187,11 +191,13 @@ resource "aws_instance" "private-vm" {
     subnet_id = aws_subnet.prod-private-subnet.id
 
     root_block_device {
-      volume_size = 15
+      volume_size = var.prod_env == "prod" ? 20 : var.default_root_volume
       volume_type = "gp3"
     }
 
+    depends_on = [ aws_instance.ec2_vm , aws_security_group.private-sg ]
+
     tags = {
-      Name = "backend-vm"
+      Name = each.key
     }
 }
