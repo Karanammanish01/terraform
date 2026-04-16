@@ -43,3 +43,58 @@ resource "azurerm_network_security_group" "public_prodtion_network_sg" {
         description = "This rule is used for ssh useage"
     }
 }
+
+resource "azurerm_public_ip" "prod_public_ip" {
+    name = "prod_public_ip_address"
+    location = azurerm_resource_group.prod-resource.location
+    resource_group_name = azurerm_resource_group.prod-resource.name
+    allocation_method = "Static"
+    
+    tags = {
+        environment = "Production"
+    }
+}
+
+resource "azurerm_network_interface" "prod_nic" {
+    name = "prod_nic"
+    location = azurerm_resource_group.prod-resource.location
+    resource_group_name = azurerm_resource_group.prod-resource.name
+
+    ip_configuration {
+      name = "internal"
+      subnet_id = azurerm_subnet.public_subnet.id
+      private_ip_address_allocation = "Dynamic"
+      public_ip_address_id = azurerm_public_ip.prod_public_ip.id
+    }
+}
+
+resource "azurerm_linux_virtual_machine" "public_vm" {
+    name = "public_prod_vm"
+    resource_group_name = azurerm_resource_group.prod-resource.name
+    location = azurerm_resource_group.prod-resource.location
+    size = "Standard F2"
+
+    admin_username = "adminuser"
+
+    network_interface_ids = [
+        azurerm_network_interface.prod_nic.id
+    ]
+
+    admin_ssh_key {
+      username = "adminuser"
+      public_key = file("azure_key.pub")
+    }
+
+    os_disk {
+      caching = "ReadWrite"
+      storage_account_type = "Standard_LRS"
+    }
+
+    source_image_reference {
+          publisher = "Canonical"
+            offer     = "0001-com-ubuntu-server-jammy"
+            sku       = "22_04-lts"
+            version   = "latest"
+    }  
+ 
+}
